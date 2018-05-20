@@ -9131,6 +9131,367 @@ var _elm_lang$html$Html_Events$Options = F2(
 		return {stopPropagation: a, preventDefault: b};
 	});
 
+var _elm_lang$http$Native_Http = function() {
+
+
+// ENCODING AND DECODING
+
+function encodeUri(string)
+{
+	return encodeURIComponent(string);
+}
+
+function decodeUri(string)
+{
+	try
+	{
+		return _elm_lang$core$Maybe$Just(decodeURIComponent(string));
+	}
+	catch(e)
+	{
+		return _elm_lang$core$Maybe$Nothing;
+	}
+}
+
+
+// SEND REQUEST
+
+function toTask(request, maybeProgress)
+{
+	return _elm_lang$core$Native_Scheduler.nativeBinding(function(callback)
+	{
+		var xhr = new XMLHttpRequest();
+
+		configureProgress(xhr, maybeProgress);
+
+		xhr.addEventListener('error', function() {
+			callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'NetworkError' }));
+		});
+		xhr.addEventListener('timeout', function() {
+			callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'Timeout' }));
+		});
+		xhr.addEventListener('load', function() {
+			callback(handleResponse(xhr, request.expect.responseToResult));
+		});
+
+		try
+		{
+			xhr.open(request.method, request.url, true);
+		}
+		catch (e)
+		{
+			return callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'BadUrl', _0: request.url }));
+		}
+
+		configureRequest(xhr, request);
+		send(xhr, request.body);
+
+		return function() { xhr.abort(); };
+	});
+}
+
+function configureProgress(xhr, maybeProgress)
+{
+	if (maybeProgress.ctor === 'Nothing')
+	{
+		return;
+	}
+
+	xhr.addEventListener('progress', function(event) {
+		if (!event.lengthComputable)
+		{
+			return;
+		}
+		_elm_lang$core$Native_Scheduler.rawSpawn(maybeProgress._0({
+			bytes: event.loaded,
+			bytesExpected: event.total
+		}));
+	});
+}
+
+function configureRequest(xhr, request)
+{
+	function setHeader(pair)
+	{
+		xhr.setRequestHeader(pair._0, pair._1);
+	}
+
+	A2(_elm_lang$core$List$map, setHeader, request.headers);
+	xhr.responseType = request.expect.responseType;
+	xhr.withCredentials = request.withCredentials;
+
+	if (request.timeout.ctor === 'Just')
+	{
+		xhr.timeout = request.timeout._0;
+	}
+}
+
+function send(xhr, body)
+{
+	switch (body.ctor)
+	{
+		case 'EmptyBody':
+			xhr.send();
+			return;
+
+		case 'StringBody':
+			xhr.setRequestHeader('Content-Type', body._0);
+			xhr.send(body._1);
+			return;
+
+		case 'FormDataBody':
+			xhr.send(body._0);
+			return;
+	}
+}
+
+
+// RESPONSES
+
+function handleResponse(xhr, responseToResult)
+{
+	var response = toResponse(xhr);
+
+	if (xhr.status < 200 || 300 <= xhr.status)
+	{
+		response.body = xhr.responseText;
+		return _elm_lang$core$Native_Scheduler.fail({
+			ctor: 'BadStatus',
+			_0: response
+		});
+	}
+
+	var result = responseToResult(response);
+
+	if (result.ctor === 'Ok')
+	{
+		return _elm_lang$core$Native_Scheduler.succeed(result._0);
+	}
+	else
+	{
+		response.body = xhr.responseText;
+		return _elm_lang$core$Native_Scheduler.fail({
+			ctor: 'BadPayload',
+			_0: result._0,
+			_1: response
+		});
+	}
+}
+
+function toResponse(xhr)
+{
+	return {
+		status: { code: xhr.status, message: xhr.statusText },
+		headers: parseHeaders(xhr.getAllResponseHeaders()),
+		url: xhr.responseURL,
+		body: xhr.response
+	};
+}
+
+function parseHeaders(rawHeaders)
+{
+	var headers = _elm_lang$core$Dict$empty;
+
+	if (!rawHeaders)
+	{
+		return headers;
+	}
+
+	var headerPairs = rawHeaders.split('\u000d\u000a');
+	for (var i = headerPairs.length; i--; )
+	{
+		var headerPair = headerPairs[i];
+		var index = headerPair.indexOf('\u003a\u0020');
+		if (index > 0)
+		{
+			var key = headerPair.substring(0, index);
+			var value = headerPair.substring(index + 2);
+
+			headers = A3(_elm_lang$core$Dict$update, key, function(oldValue) {
+				if (oldValue.ctor === 'Just')
+				{
+					return _elm_lang$core$Maybe$Just(value + ', ' + oldValue._0);
+				}
+				return _elm_lang$core$Maybe$Just(value);
+			}, headers);
+		}
+	}
+
+	return headers;
+}
+
+
+// EXPECTORS
+
+function expectStringResponse(responseToResult)
+{
+	return {
+		responseType: 'text',
+		responseToResult: responseToResult
+	};
+}
+
+function mapExpect(func, expect)
+{
+	return {
+		responseType: expect.responseType,
+		responseToResult: function(response) {
+			var convertedResponse = expect.responseToResult(response);
+			return A2(_elm_lang$core$Result$map, func, convertedResponse);
+		}
+	};
+}
+
+
+// BODY
+
+function multipart(parts)
+{
+	var formData = new FormData();
+
+	while (parts.ctor !== '[]')
+	{
+		var part = parts._0;
+		formData.append(part._0, part._1);
+		parts = parts._1;
+	}
+
+	return { ctor: 'FormDataBody', _0: formData };
+}
+
+return {
+	toTask: F2(toTask),
+	expectStringResponse: expectStringResponse,
+	mapExpect: F2(mapExpect),
+	multipart: multipart,
+	encodeUri: encodeUri,
+	decodeUri: decodeUri
+};
+
+}();
+
+var _elm_lang$http$Http_Internal$map = F2(
+	function (func, request) {
+		return _elm_lang$core$Native_Utils.update(
+			request,
+			{
+				expect: A2(_elm_lang$http$Native_Http.mapExpect, func, request.expect)
+			});
+	});
+var _elm_lang$http$Http_Internal$RawRequest = F7(
+	function (a, b, c, d, e, f, g) {
+		return {method: a, headers: b, url: c, body: d, expect: e, timeout: f, withCredentials: g};
+	});
+var _elm_lang$http$Http_Internal$Request = function (a) {
+	return {ctor: 'Request', _0: a};
+};
+var _elm_lang$http$Http_Internal$Expect = {ctor: 'Expect'};
+var _elm_lang$http$Http_Internal$FormDataBody = {ctor: 'FormDataBody'};
+var _elm_lang$http$Http_Internal$StringBody = F2(
+	function (a, b) {
+		return {ctor: 'StringBody', _0: a, _1: b};
+	});
+var _elm_lang$http$Http_Internal$EmptyBody = {ctor: 'EmptyBody'};
+var _elm_lang$http$Http_Internal$Header = F2(
+	function (a, b) {
+		return {ctor: 'Header', _0: a, _1: b};
+	});
+
+var _elm_lang$http$Http$decodeUri = _elm_lang$http$Native_Http.decodeUri;
+var _elm_lang$http$Http$encodeUri = _elm_lang$http$Native_Http.encodeUri;
+var _elm_lang$http$Http$expectStringResponse = _elm_lang$http$Native_Http.expectStringResponse;
+var _elm_lang$http$Http$expectJson = function (decoder) {
+	return _elm_lang$http$Http$expectStringResponse(
+		function (response) {
+			return A2(_elm_lang$core$Json_Decode$decodeString, decoder, response.body);
+		});
+};
+var _elm_lang$http$Http$expectString = _elm_lang$http$Http$expectStringResponse(
+	function (response) {
+		return _elm_lang$core$Result$Ok(response.body);
+	});
+var _elm_lang$http$Http$multipartBody = _elm_lang$http$Native_Http.multipart;
+var _elm_lang$http$Http$stringBody = _elm_lang$http$Http_Internal$StringBody;
+var _elm_lang$http$Http$jsonBody = function (value) {
+	return A2(
+		_elm_lang$http$Http_Internal$StringBody,
+		'application/json',
+		A2(_elm_lang$core$Json_Encode$encode, 0, value));
+};
+var _elm_lang$http$Http$emptyBody = _elm_lang$http$Http_Internal$EmptyBody;
+var _elm_lang$http$Http$header = _elm_lang$http$Http_Internal$Header;
+var _elm_lang$http$Http$request = _elm_lang$http$Http_Internal$Request;
+var _elm_lang$http$Http$post = F3(
+	function (url, body, decoder) {
+		return _elm_lang$http$Http$request(
+			{
+				method: 'POST',
+				headers: {ctor: '[]'},
+				url: url,
+				body: body,
+				expect: _elm_lang$http$Http$expectJson(decoder),
+				timeout: _elm_lang$core$Maybe$Nothing,
+				withCredentials: false
+			});
+	});
+var _elm_lang$http$Http$get = F2(
+	function (url, decoder) {
+		return _elm_lang$http$Http$request(
+			{
+				method: 'GET',
+				headers: {ctor: '[]'},
+				url: url,
+				body: _elm_lang$http$Http$emptyBody,
+				expect: _elm_lang$http$Http$expectJson(decoder),
+				timeout: _elm_lang$core$Maybe$Nothing,
+				withCredentials: false
+			});
+	});
+var _elm_lang$http$Http$getString = function (url) {
+	return _elm_lang$http$Http$request(
+		{
+			method: 'GET',
+			headers: {ctor: '[]'},
+			url: url,
+			body: _elm_lang$http$Http$emptyBody,
+			expect: _elm_lang$http$Http$expectString,
+			timeout: _elm_lang$core$Maybe$Nothing,
+			withCredentials: false
+		});
+};
+var _elm_lang$http$Http$toTask = function (_p0) {
+	var _p1 = _p0;
+	return A2(_elm_lang$http$Native_Http.toTask, _p1._0, _elm_lang$core$Maybe$Nothing);
+};
+var _elm_lang$http$Http$send = F2(
+	function (resultToMessage, request) {
+		return A2(
+			_elm_lang$core$Task$attempt,
+			resultToMessage,
+			_elm_lang$http$Http$toTask(request));
+	});
+var _elm_lang$http$Http$Response = F4(
+	function (a, b, c, d) {
+		return {url: a, status: b, headers: c, body: d};
+	});
+var _elm_lang$http$Http$BadPayload = F2(
+	function (a, b) {
+		return {ctor: 'BadPayload', _0: a, _1: b};
+	});
+var _elm_lang$http$Http$BadStatus = function (a) {
+	return {ctor: 'BadStatus', _0: a};
+};
+var _elm_lang$http$Http$NetworkError = {ctor: 'NetworkError'};
+var _elm_lang$http$Http$Timeout = {ctor: 'Timeout'};
+var _elm_lang$http$Http$BadUrl = function (a) {
+	return {ctor: 'BadUrl', _0: a};
+};
+var _elm_lang$http$Http$StringPart = F2(
+	function (a, b) {
+		return {ctor: 'StringPart', _0: a, _1: b};
+	});
+var _elm_lang$http$Http$stringPart = _elm_lang$http$Http$StringPart;
+
 var _user$project$Util$punctuation = '.,;!?:';
 var _user$project$Util$containsChar = F2(
 	function (str, $char) {
@@ -9202,6 +9563,175 @@ var _user$project$Util$Entry = F2(
 		return {line: a, dictionary: b};
 	});
 
+var _user$project$Main$entryView = function (entry) {
+	return A2(
+		_elm_lang$html$Html$p,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(entry.line),
+			_1: {ctor: '[]'}
+		});
+};
+var _user$project$Main$addEntry = F2(
+	function (story, entry) {
+		return _user$project$Util$isCompletedDictionary(entry) ? _elm_lang$core$Native_Utils.update(
+			story,
+			{
+				entries: A2(
+					_elm_lang$core$Basics_ops['++'],
+					story.entries,
+					{
+						ctor: '::',
+						_0: entry,
+						_1: {ctor: '[]'}
+					})
+			}) : story;
+	});
+var _user$project$Main$encodeEntry = function (_p0) {
+	var _p1 = _p0;
+	return _elm_lang$core$Json_Encode$object(
+		{
+			ctor: '::',
+			_0: {
+				ctor: '_Tuple2',
+				_0: 'line',
+				_1: _elm_lang$core$Json_Encode$string(_p1.line)
+			},
+			_1: {ctor: '[]'}
+		});
+};
+var _user$project$Main$encodeEntries = function (entries) {
+	return _elm_lang$core$Json_Encode$list(
+		A2(_elm_lang$core$List$map, _user$project$Main$encodeEntry, entries));
+};
+var _user$project$Main$encodeStory = function (_p2) {
+	var _p3 = _p2;
+	return _elm_lang$core$Json_Encode$object(
+		{
+			ctor: '::',
+			_0: {
+				ctor: '_Tuple2',
+				_0: 'id',
+				_1: _elm_lang$core$Json_Encode$int(_p3.id)
+			},
+			_1: {
+				ctor: '::',
+				_0: {
+					ctor: '_Tuple2',
+					_0: 'entries',
+					_1: _user$project$Main$encodeEntries(_p3.entries)
+				},
+				_1: {ctor: '[]'}
+			}
+		});
+};
+var _user$project$Main$entryDecoder = A2(
+	_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$hardcoded,
+	{ctor: '[]'},
+	A3(
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+		'line',
+		_elm_lang$core$Json_Decode$string,
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Util$Entry)));
+var _user$project$Main$wordDecoder = A3(
+	_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+	'results',
+	_elm_lang$core$Json_Decode$list(_user$project$Util$decodeDefinition),
+	A3(
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+		'word',
+		_elm_lang$core$Json_Decode$string,
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Util$Word)));
+var _user$project$Main$Model = F3(
+	function (a, b, c) {
+		return {stories: a, activeStory: b, entry: c};
+	});
+var _user$project$Main$initModel = A3(
+	_user$project$Main$Model,
+	{ctor: '[]'},
+	_elm_lang$core$Maybe$Nothing,
+	A2(
+		_user$project$Util$Entry,
+		'',
+		{ctor: '[]'}));
+var _user$project$Main$Story = F2(
+	function (a, b) {
+		return {id: a, entries: b};
+	});
+var _user$project$Main$storyDecoder = A3(
+	_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+	'entries',
+	_elm_lang$core$Json_Decode$list(_user$project$Main$entryDecoder),
+	A3(
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+		'id',
+		_elm_lang$core$Json_Decode$int,
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Main$Story)));
+var _user$project$Main$postStoryRequest = function (story) {
+	return _elm_lang$http$Http$request(
+		{
+			method: 'PATCH',
+			headers: {ctor: '[]'},
+			url: A2(
+				_elm_lang$core$Basics_ops['++'],
+				'http://localhost:3001/stories/',
+				_elm_lang$core$Basics$toString(story.id)),
+			body: _elm_lang$http$Http$jsonBody(
+				_user$project$Main$encodeStory(story)),
+			expect: _elm_lang$http$Http$expectJson(_user$project$Main$storyDecoder),
+			timeout: _elm_lang$core$Maybe$Nothing,
+			withCredentials: false
+		});
+};
+var _user$project$Main$getStoryRequest = function (index) {
+	return A2(
+		_elm_lang$http$Http$get,
+		A2(
+			_elm_lang$core$Basics_ops['++'],
+			'http://localhost:3001/stories/',
+			_elm_lang$core$Basics$toString(index)),
+		_user$project$Main$storyDecoder);
+};
+var _user$project$Main$UpdateEntry = function (a) {
+	return {ctor: 'UpdateEntry', _0: a};
+};
+var _user$project$Main$AddEntry = function (a) {
+	return {ctor: 'AddEntry', _0: a};
+};
+var _user$project$Main$inputView = function (story) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$input,
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$UpdateEntry),
+					_1: {ctor: '[]'}
+				},
+				{ctor: '[]'}),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$button,
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html_Events$onClick(
+							_user$project$Main$AddEntry(story)),
+						_1: {ctor: '[]'}
+					},
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html$text('Add Entry'),
+						_1: {ctor: '[]'}
+					}),
+				_1: {ctor: '[]'}
+			}
+		});
+};
 var _user$project$Main$activeStoryView = function (story) {
 	return A2(
 		_elm_lang$html$Html$div,
@@ -9211,21 +9741,28 @@ var _user$project$Main$activeStoryView = function (story) {
 			_1: {ctor: '[]'}
 		},
 		function () {
-			var _p0 = story;
-			if (_p0.ctor === 'Just') {
-				return A2(
-					_elm_lang$core$List$map,
-					function (entry) {
-						return A2(
-							_elm_lang$html$Html$p,
-							{ctor: '[]'},
-							{
+			var _p4 = story;
+			if (_p4.ctor === 'Just') {
+				var _p5 = _p4._0;
+				return {
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$div,
+						{ctor: '[]'},
+						{
+							ctor: '::',
+							_0: A2(
+								_elm_lang$html$Html$div,
+								{ctor: '[]'},
+								A2(_elm_lang$core$List$map, _user$project$Main$entryView, _p5.entries)),
+							_1: {
 								ctor: '::',
-								_0: _elm_lang$html$Html$text(entry.line),
+								_0: _user$project$Main$inputView(_p5),
 								_1: {ctor: '[]'}
-							});
-					},
-					_p0._0.entries);
+							}
+						}),
+					_1: {ctor: '[]'}
+				};
 			} else {
 				return {
 					ctor: '::',
@@ -9242,134 +9779,23 @@ var _user$project$Main$activeStoryView = function (story) {
 			}
 		}());
 };
-var _user$project$Main$wordDecoder = A3(
-	_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
-	'results',
-	_elm_lang$core$Json_Decode$list(_user$project$Util$decodeDefinition),
-	A3(
-		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
-		'word',
-		_elm_lang$core$Json_Decode$string,
-		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Util$Word)));
-var _user$project$Main$Model = F3(
-	function (a, b, c) {
-		return {stories: a, activeStory: b, entry: c};
-	});
-var _user$project$Main$Story = function (a) {
-	return {entries: a};
+var _user$project$Main$PostStory = function (a) {
+	return {ctor: 'PostStory', _0: a};
 };
-var _user$project$Main$initStories = {
-	ctor: '::',
-	_0: _user$project$Main$Story(
-		{
-			ctor: '::',
-			_0: A2(
-				_user$project$Util$Entry,
-				'Entry #1',
-				{ctor: '[]'}),
-			_1: {ctor: '[]'}
-		}),
-	_1: {
-		ctor: '::',
-		_0: _user$project$Main$Story(
-			{
-				ctor: '::',
-				_0: A2(
-					_user$project$Util$Entry,
-					'Entry #1',
-					{ctor: '[]'}),
-				_1: {
-					ctor: '::',
-					_0: A2(
-						_user$project$Util$Entry,
-						'Entry #2',
-						{ctor: '[]'}),
-					_1: {ctor: '[]'}
-				}
-			}),
-		_1: {
-			ctor: '::',
-			_0: _user$project$Main$Story(
-				{
-					ctor: '::',
-					_0: A2(
-						_user$project$Util$Entry,
-						'Entry #1',
-						{ctor: '[]'}),
-					_1: {
-						ctor: '::',
-						_0: A2(
-							_user$project$Util$Entry,
-							'Entry #2',
-							{ctor: '[]'}),
-						_1: {
-							ctor: '::',
-							_0: A2(
-								_user$project$Util$Entry,
-								'Entry #3',
-								{ctor: '[]'}),
-							_1: {ctor: '[]'}
-						}
-					}
-				}),
-			_1: {ctor: '[]'}
-		}
-	}
+var _user$project$Main$FetchStories = function (a) {
+	return {ctor: 'FetchStories', _0: a};
 };
-var _user$project$Main$initModel = A3(
-	_user$project$Main$Model,
-	_user$project$Main$initStories,
-	_elm_lang$core$Maybe$Nothing,
+var _user$project$Main$initCmd = A2(
+	_elm_lang$http$Http$send,
+	_user$project$Main$FetchStories,
 	A2(
-		_user$project$Util$Entry,
-		'',
-		{ctor: '[]'}));
-var _user$project$Main$addEntry = F2(
-	function (story, entry) {
-		return _user$project$Util$isCompletedDictionary(entry) ? _user$project$Main$Story(
-			A2(
-				_elm_lang$core$Basics_ops['++'],
-				story.entries,
-				{
-					ctor: '::',
-					_0: entry,
-					_1: {ctor: '[]'}
-				})) : story;
-	});
-var _user$project$Main$UpdateEntry = function (a) {
-	return {ctor: 'UpdateEntry', _0: a};
+		_elm_lang$http$Http$get,
+		'http://localhost:3001/stories',
+		_elm_lang$core$Json_Decode$list(_user$project$Main$storyDecoder)));
+var _user$project$Main$init = {ctor: '_Tuple2', _0: _user$project$Main$initModel, _1: _user$project$Main$initCmd};
+var _user$project$Main$GetStory = function (a) {
+	return {ctor: 'GetStory', _0: a};
 };
-var _user$project$Main$AddEntry = {ctor: 'AddEntry'};
-var _user$project$Main$inputView = A2(
-	_elm_lang$html$Html$div,
-	{ctor: '[]'},
-	{
-		ctor: '::',
-		_0: A2(
-			_elm_lang$html$Html$input,
-			{
-				ctor: '::',
-				_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$UpdateEntry),
-				_1: {ctor: '[]'}
-			},
-			{ctor: '[]'}),
-		_1: {
-			ctor: '::',
-			_0: A2(
-				_elm_lang$html$Html$button,
-				{
-					ctor: '::',
-					_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$AddEntry),
-					_1: {ctor: '[]'}
-				},
-				{
-					ctor: '::',
-					_0: _elm_lang$html$Html$text('Add Entry'),
-					_1: {ctor: '[]'}
-				}),
-			_1: {ctor: '[]'}
-		}
-	});
 var _user$project$Main$RandomStory = {ctor: 'RandomStory'};
 var _user$project$Main$view = function (model) {
 	return A2(
@@ -9392,11 +9818,7 @@ var _user$project$Main$view = function (model) {
 			_1: {
 				ctor: '::',
 				_0: _user$project$Main$activeStoryView(model.activeStory),
-				_1: {
-					ctor: '::',
-					_0: _user$project$Main$inputView,
-					_1: {ctor: '[]'}
-				}
+				_1: {ctor: '[]'}
 			}
 		});
 };
@@ -9412,26 +9834,18 @@ var _user$project$Main$randomStory = function (stories) {
 			0,
 			_elm_lang$core$List$length(stories) - 1));
 };
-var _user$project$Main$init = {
-	ctor: '_Tuple2',
-	_0: _user$project$Main$initModel,
-	_1: _user$project$Main$randomStory(_user$project$Main$initModel.stories)
-};
 var _user$project$Main$update = F2(
 	function (msg, model) {
-		var _p1 = msg;
-		switch (_p1.ctor) {
+		var _p6 = msg;
+		switch (_p6.ctor) {
 			case 'LoadStory':
-				var story = A2(
-					_elm_lang$core$Array$get,
-					_p1._0,
-					_elm_lang$core$Array$fromList(model.stories));
 				return {
 					ctor: '_Tuple2',
-					_0: _elm_lang$core$Native_Utils.update(
-						model,
-						{activeStory: story}),
-					_1: _elm_lang$core$Platform_Cmd$none
+					_0: model,
+					_1: A2(
+						_elm_lang$http$Http$send,
+						_user$project$Main$GetStory,
+						_user$project$Main$getStoryRequest(_p6._0))
 				};
 			case 'RandomStory':
 				return {
@@ -9439,11 +9853,44 @@ var _user$project$Main$update = F2(
 					_0: model,
 					_1: _user$project$Main$randomStory(model.stories)
 				};
+			case 'GetStory':
+				if (_p6._0.ctor === 'Ok') {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{
+								activeStory: _elm_lang$core$Maybe$Just(_p6._0._0)
+							}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				} else {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				}
+			case 'FetchStories':
+				if (_p6._0.ctor === 'Ok') {
+					var _p7 = _p6._0._0;
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{stories: _p7}),
+						_1: _user$project$Main$randomStory(_p7)
+					};
+				} else {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				}
+			case 'PostStory':
+				if (_p6._0.ctor === 'Ok') {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				} else {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				}
 			case 'UpdateEntry':
 				var curEntry = model.entry;
 				var entry = _elm_lang$core$Native_Utils.update(
 					curEntry,
-					{line: _p1._0});
+					{line: _p6._0});
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
@@ -9453,18 +9900,18 @@ var _user$project$Main$update = F2(
 				};
 			default:
 				var entry = model.entry;
-				var story = A2(
-					_elm_lang$core$Maybe$map,
-					function (story) {
-						return A2(_user$project$Main$addEntry, story, entry);
-					},
-					model.activeStory);
+				var newStory = A2(_user$project$Main$addEntry, _p6._0, entry);
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
-						{activeStory: story}),
-					_1: _elm_lang$core$Platform_Cmd$none
+						{
+							activeStory: _elm_lang$core$Maybe$Just(newStory)
+						}),
+					_1: A2(
+						_elm_lang$http$Http$send,
+						_user$project$Main$PostStory,
+						_user$project$Main$postStoryRequest(newStory))
 				};
 		}
 	});

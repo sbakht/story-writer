@@ -13557,6 +13557,482 @@ var _elm_lang$html$Html_Attributes$classList = function (list) {
 };
 var _elm_lang$html$Html_Attributes$style = _elm_lang$virtual_dom$VirtualDom$style;
 
+var _elm_lang$html$Html_Events$keyCode = A2(_elm_lang$core$Json_Decode$field, 'keyCode', _elm_lang$core$Json_Decode$int);
+var _elm_lang$html$Html_Events$targetChecked = A2(
+	_elm_lang$core$Json_Decode$at,
+	{
+		ctor: '::',
+		_0: 'target',
+		_1: {
+			ctor: '::',
+			_0: 'checked',
+			_1: {ctor: '[]'}
+		}
+	},
+	_elm_lang$core$Json_Decode$bool);
+var _elm_lang$html$Html_Events$targetValue = A2(
+	_elm_lang$core$Json_Decode$at,
+	{
+		ctor: '::',
+		_0: 'target',
+		_1: {
+			ctor: '::',
+			_0: 'value',
+			_1: {ctor: '[]'}
+		}
+	},
+	_elm_lang$core$Json_Decode$string);
+var _elm_lang$html$Html_Events$defaultOptions = _elm_lang$virtual_dom$VirtualDom$defaultOptions;
+var _elm_lang$html$Html_Events$onWithOptions = _elm_lang$virtual_dom$VirtualDom$onWithOptions;
+var _elm_lang$html$Html_Events$on = _elm_lang$virtual_dom$VirtualDom$on;
+var _elm_lang$html$Html_Events$onFocus = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'focus',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onBlur = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'blur',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onSubmitOptions = _elm_lang$core$Native_Utils.update(
+	_elm_lang$html$Html_Events$defaultOptions,
+	{preventDefault: true});
+var _elm_lang$html$Html_Events$onSubmit = function (msg) {
+	return A3(
+		_elm_lang$html$Html_Events$onWithOptions,
+		'submit',
+		_elm_lang$html$Html_Events$onSubmitOptions,
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onCheck = function (tagger) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'change',
+		A2(_elm_lang$core$Json_Decode$map, tagger, _elm_lang$html$Html_Events$targetChecked));
+};
+var _elm_lang$html$Html_Events$onInput = function (tagger) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'input',
+		A2(_elm_lang$core$Json_Decode$map, tagger, _elm_lang$html$Html_Events$targetValue));
+};
+var _elm_lang$html$Html_Events$onMouseOut = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseout',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseOver = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseover',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseLeave = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseleave',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseEnter = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseenter',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseUp = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseup',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseDown = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mousedown',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onDoubleClick = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'dblclick',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onClick = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'click',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$Options = F2(
+	function (a, b) {
+		return {stopPropagation: a, preventDefault: b};
+	});
+
+var _elm_lang$http$Native_Http = function() {
+
+
+// ENCODING AND DECODING
+
+function encodeUri(string)
+{
+	return encodeURIComponent(string);
+}
+
+function decodeUri(string)
+{
+	try
+	{
+		return _elm_lang$core$Maybe$Just(decodeURIComponent(string));
+	}
+	catch(e)
+	{
+		return _elm_lang$core$Maybe$Nothing;
+	}
+}
+
+
+// SEND REQUEST
+
+function toTask(request, maybeProgress)
+{
+	return _elm_lang$core$Native_Scheduler.nativeBinding(function(callback)
+	{
+		var xhr = new XMLHttpRequest();
+
+		configureProgress(xhr, maybeProgress);
+
+		xhr.addEventListener('error', function() {
+			callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'NetworkError' }));
+		});
+		xhr.addEventListener('timeout', function() {
+			callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'Timeout' }));
+		});
+		xhr.addEventListener('load', function() {
+			callback(handleResponse(xhr, request.expect.responseToResult));
+		});
+
+		try
+		{
+			xhr.open(request.method, request.url, true);
+		}
+		catch (e)
+		{
+			return callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'BadUrl', _0: request.url }));
+		}
+
+		configureRequest(xhr, request);
+		send(xhr, request.body);
+
+		return function() { xhr.abort(); };
+	});
+}
+
+function configureProgress(xhr, maybeProgress)
+{
+	if (maybeProgress.ctor === 'Nothing')
+	{
+		return;
+	}
+
+	xhr.addEventListener('progress', function(event) {
+		if (!event.lengthComputable)
+		{
+			return;
+		}
+		_elm_lang$core$Native_Scheduler.rawSpawn(maybeProgress._0({
+			bytes: event.loaded,
+			bytesExpected: event.total
+		}));
+	});
+}
+
+function configureRequest(xhr, request)
+{
+	function setHeader(pair)
+	{
+		xhr.setRequestHeader(pair._0, pair._1);
+	}
+
+	A2(_elm_lang$core$List$map, setHeader, request.headers);
+	xhr.responseType = request.expect.responseType;
+	xhr.withCredentials = request.withCredentials;
+
+	if (request.timeout.ctor === 'Just')
+	{
+		xhr.timeout = request.timeout._0;
+	}
+}
+
+function send(xhr, body)
+{
+	switch (body.ctor)
+	{
+		case 'EmptyBody':
+			xhr.send();
+			return;
+
+		case 'StringBody':
+			xhr.setRequestHeader('Content-Type', body._0);
+			xhr.send(body._1);
+			return;
+
+		case 'FormDataBody':
+			xhr.send(body._0);
+			return;
+	}
+}
+
+
+// RESPONSES
+
+function handleResponse(xhr, responseToResult)
+{
+	var response = toResponse(xhr);
+
+	if (xhr.status < 200 || 300 <= xhr.status)
+	{
+		response.body = xhr.responseText;
+		return _elm_lang$core$Native_Scheduler.fail({
+			ctor: 'BadStatus',
+			_0: response
+		});
+	}
+
+	var result = responseToResult(response);
+
+	if (result.ctor === 'Ok')
+	{
+		return _elm_lang$core$Native_Scheduler.succeed(result._0);
+	}
+	else
+	{
+		response.body = xhr.responseText;
+		return _elm_lang$core$Native_Scheduler.fail({
+			ctor: 'BadPayload',
+			_0: result._0,
+			_1: response
+		});
+	}
+}
+
+function toResponse(xhr)
+{
+	return {
+		status: { code: xhr.status, message: xhr.statusText },
+		headers: parseHeaders(xhr.getAllResponseHeaders()),
+		url: xhr.responseURL,
+		body: xhr.response
+	};
+}
+
+function parseHeaders(rawHeaders)
+{
+	var headers = _elm_lang$core$Dict$empty;
+
+	if (!rawHeaders)
+	{
+		return headers;
+	}
+
+	var headerPairs = rawHeaders.split('\u000d\u000a');
+	for (var i = headerPairs.length; i--; )
+	{
+		var headerPair = headerPairs[i];
+		var index = headerPair.indexOf('\u003a\u0020');
+		if (index > 0)
+		{
+			var key = headerPair.substring(0, index);
+			var value = headerPair.substring(index + 2);
+
+			headers = A3(_elm_lang$core$Dict$update, key, function(oldValue) {
+				if (oldValue.ctor === 'Just')
+				{
+					return _elm_lang$core$Maybe$Just(value + ', ' + oldValue._0);
+				}
+				return _elm_lang$core$Maybe$Just(value);
+			}, headers);
+		}
+	}
+
+	return headers;
+}
+
+
+// EXPECTORS
+
+function expectStringResponse(responseToResult)
+{
+	return {
+		responseType: 'text',
+		responseToResult: responseToResult
+	};
+}
+
+function mapExpect(func, expect)
+{
+	return {
+		responseType: expect.responseType,
+		responseToResult: function(response) {
+			var convertedResponse = expect.responseToResult(response);
+			return A2(_elm_lang$core$Result$map, func, convertedResponse);
+		}
+	};
+}
+
+
+// BODY
+
+function multipart(parts)
+{
+	var formData = new FormData();
+
+	while (parts.ctor !== '[]')
+	{
+		var part = parts._0;
+		formData.append(part._0, part._1);
+		parts = parts._1;
+	}
+
+	return { ctor: 'FormDataBody', _0: formData };
+}
+
+return {
+	toTask: F2(toTask),
+	expectStringResponse: expectStringResponse,
+	mapExpect: F2(mapExpect),
+	multipart: multipart,
+	encodeUri: encodeUri,
+	decodeUri: decodeUri
+};
+
+}();
+
+var _elm_lang$http$Http_Internal$map = F2(
+	function (func, request) {
+		return _elm_lang$core$Native_Utils.update(
+			request,
+			{
+				expect: A2(_elm_lang$http$Native_Http.mapExpect, func, request.expect)
+			});
+	});
+var _elm_lang$http$Http_Internal$RawRequest = F7(
+	function (a, b, c, d, e, f, g) {
+		return {method: a, headers: b, url: c, body: d, expect: e, timeout: f, withCredentials: g};
+	});
+var _elm_lang$http$Http_Internal$Request = function (a) {
+	return {ctor: 'Request', _0: a};
+};
+var _elm_lang$http$Http_Internal$Expect = {ctor: 'Expect'};
+var _elm_lang$http$Http_Internal$FormDataBody = {ctor: 'FormDataBody'};
+var _elm_lang$http$Http_Internal$StringBody = F2(
+	function (a, b) {
+		return {ctor: 'StringBody', _0: a, _1: b};
+	});
+var _elm_lang$http$Http_Internal$EmptyBody = {ctor: 'EmptyBody'};
+var _elm_lang$http$Http_Internal$Header = F2(
+	function (a, b) {
+		return {ctor: 'Header', _0: a, _1: b};
+	});
+
+var _elm_lang$http$Http$decodeUri = _elm_lang$http$Native_Http.decodeUri;
+var _elm_lang$http$Http$encodeUri = _elm_lang$http$Native_Http.encodeUri;
+var _elm_lang$http$Http$expectStringResponse = _elm_lang$http$Native_Http.expectStringResponse;
+var _elm_lang$http$Http$expectJson = function (decoder) {
+	return _elm_lang$http$Http$expectStringResponse(
+		function (response) {
+			return A2(_elm_lang$core$Json_Decode$decodeString, decoder, response.body);
+		});
+};
+var _elm_lang$http$Http$expectString = _elm_lang$http$Http$expectStringResponse(
+	function (response) {
+		return _elm_lang$core$Result$Ok(response.body);
+	});
+var _elm_lang$http$Http$multipartBody = _elm_lang$http$Native_Http.multipart;
+var _elm_lang$http$Http$stringBody = _elm_lang$http$Http_Internal$StringBody;
+var _elm_lang$http$Http$jsonBody = function (value) {
+	return A2(
+		_elm_lang$http$Http_Internal$StringBody,
+		'application/json',
+		A2(_elm_lang$core$Json_Encode$encode, 0, value));
+};
+var _elm_lang$http$Http$emptyBody = _elm_lang$http$Http_Internal$EmptyBody;
+var _elm_lang$http$Http$header = _elm_lang$http$Http_Internal$Header;
+var _elm_lang$http$Http$request = _elm_lang$http$Http_Internal$Request;
+var _elm_lang$http$Http$post = F3(
+	function (url, body, decoder) {
+		return _elm_lang$http$Http$request(
+			{
+				method: 'POST',
+				headers: {ctor: '[]'},
+				url: url,
+				body: body,
+				expect: _elm_lang$http$Http$expectJson(decoder),
+				timeout: _elm_lang$core$Maybe$Nothing,
+				withCredentials: false
+			});
+	});
+var _elm_lang$http$Http$get = F2(
+	function (url, decoder) {
+		return _elm_lang$http$Http$request(
+			{
+				method: 'GET',
+				headers: {ctor: '[]'},
+				url: url,
+				body: _elm_lang$http$Http$emptyBody,
+				expect: _elm_lang$http$Http$expectJson(decoder),
+				timeout: _elm_lang$core$Maybe$Nothing,
+				withCredentials: false
+			});
+	});
+var _elm_lang$http$Http$getString = function (url) {
+	return _elm_lang$http$Http$request(
+		{
+			method: 'GET',
+			headers: {ctor: '[]'},
+			url: url,
+			body: _elm_lang$http$Http$emptyBody,
+			expect: _elm_lang$http$Http$expectString,
+			timeout: _elm_lang$core$Maybe$Nothing,
+			withCredentials: false
+		});
+};
+var _elm_lang$http$Http$toTask = function (_p0) {
+	var _p1 = _p0;
+	return A2(_elm_lang$http$Native_Http.toTask, _p1._0, _elm_lang$core$Maybe$Nothing);
+};
+var _elm_lang$http$Http$send = F2(
+	function (resultToMessage, request) {
+		return A2(
+			_elm_lang$core$Task$attempt,
+			resultToMessage,
+			_elm_lang$http$Http$toTask(request));
+	});
+var _elm_lang$http$Http$Response = F4(
+	function (a, b, c, d) {
+		return {url: a, status: b, headers: c, body: d};
+	});
+var _elm_lang$http$Http$BadPayload = F2(
+	function (a, b) {
+		return {ctor: 'BadPayload', _0: a, _1: b};
+	});
+var _elm_lang$http$Http$BadStatus = function (a) {
+	return {ctor: 'BadStatus', _0: a};
+};
+var _elm_lang$http$Http$NetworkError = {ctor: 'NetworkError'};
+var _elm_lang$http$Http$Timeout = {ctor: 'Timeout'};
+var _elm_lang$http$Http$BadUrl = function (a) {
+	return {ctor: 'BadUrl', _0: a};
+};
+var _elm_lang$http$Http$StringPart = F2(
+	function (a, b) {
+		return {ctor: 'StringPart', _0: a, _1: b};
+	});
+var _elm_lang$http$Http$stringPart = _elm_lang$http$Http$StringPart;
+
 var _user$project$Util$punctuation = '.,;!?:';
 var _user$project$Util$containsChar = F2(
 	function (str, $char) {
@@ -13628,66 +14104,69 @@ var _user$project$Util$Entry = F2(
 		return {line: a, dictionary: b};
 	});
 
-var _user$project$Main$view = function (model) {
+var _user$project$Main$activeStoryView = function (story) {
 	return A2(
 		_elm_lang$html$Html$div,
-		{ctor: '[]'},
 		{
 			ctor: '::',
-			_0: A2(
-				_elm_lang$html$Html$img,
-				{
+			_0: _elm_lang$html$Html_Attributes$class('story'),
+			_1: {ctor: '[]'}
+		},
+		function () {
+			var _p0 = story;
+			if (_p0.ctor === 'Just') {
+				return A2(
+					_elm_lang$core$List$map,
+					function (entry) {
+						return A2(
+							_elm_lang$html$Html$p,
+							{ctor: '[]'},
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html$text(entry.line),
+								_1: {ctor: '[]'}
+							});
+					},
+					_p0._0.entries);
+			} else {
+				return {
 					ctor: '::',
-					_0: _elm_lang$html$Html_Attributes$src('/logo.svg'),
+					_0: A2(
+						_elm_lang$html$Html$p,
+						{ctor: '[]'},
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html$text('No Stories Available'),
+							_1: {ctor: '[]'}
+						}),
 					_1: {ctor: '[]'}
-				},
-				{ctor: '[]'}),
-			_1: {
-				ctor: '::',
-				_0: A2(
-					_elm_lang$html$Html$h1,
-					{ctor: '[]'},
+				};
+			}
+		}());
+};
+var _user$project$Main$addEntry = F2(
+	function (story, entry) {
+		return _user$project$Util$isCompletedDictionary(entry) ? _elm_lang$core$Native_Utils.update(
+			story,
+			{
+				entries: A2(
+					_elm_lang$core$Basics_ops['++'],
+					story.entries,
 					{
 						ctor: '::',
-						_0: _elm_lang$html$Html$text('Your Elm App is working!'),
+						_0: entry,
 						_1: {ctor: '[]'}
-					}),
-				_1: {ctor: '[]'}
-			}
-		});
-};
-var _user$project$Main$update = F2(
-	function (msg, model) {
-		return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+					})
+			}) : story;
 	});
-var _user$project$Main$addEntry = F2(
-	function (entries, entry) {
-		return _user$project$Util$isCompletedDictionary(entry) ? A2(
-			_elm_lang$core$Basics_ops['++'],
-			entries,
-			{
-				ctor: '::',
-				_0: entry,
-				_1: {ctor: '[]'}
-			}) : entries;
-	});
-var _user$project$Main$init = {
-	ctor: '_Tuple2',
-	_0: {},
-	_1: _elm_lang$core$Platform_Cmd$none
-};
-var _user$project$Main$main = _elm_lang$html$Html$program(
-	{
-		view: _user$project$Main$view,
-		init: _user$project$Main$init,
-		update: _user$project$Main$update,
-		subscriptions: _elm_lang$core$Basics$always(_elm_lang$core$Platform_Sub$none)
-	})();
-var _user$project$Main$Model = {};
-var _user$project$Main$Word = F2(
-	function (a, b) {
-		return {word: a, details: b};
-	});
+var _user$project$Main$entryDecoder = A2(
+	_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$hardcoded,
+	{ctor: '[]'},
+	A3(
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+		'line',
+		_elm_lang$core$Json_Decode$string,
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Util$Entry)));
 var _user$project$Main$wordDecoder = A3(
 	_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
 	'results',
@@ -13696,21 +14175,233 @@ var _user$project$Main$wordDecoder = A3(
 		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
 		'word',
 		_elm_lang$core$Json_Decode$string,
-		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Main$Word)));
-var _user$project$Main$Definition = F2(
-	function (a, b) {
-		return {definition: a, partOfSpeech: b};
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Util$Word)));
+var _user$project$Main$Model = F3(
+	function (a, b, c) {
+		return {stories: a, activeStory: b, entry: c};
 	});
-var _user$project$Main$Entry = F2(
+var _user$project$Main$initModel = A3(
+	_user$project$Main$Model,
+	{ctor: '[]'},
+	_elm_lang$core$Maybe$Nothing,
+	A2(
+		_user$project$Util$Entry,
+		'',
+		{ctor: '[]'}));
+var _user$project$Main$Story = F2(
 	function (a, b) {
-		return {line: a, dictionary: b};
+		return {id: a, entries: b};
 	});
-var _user$project$Main$NoOp = {ctor: 'NoOp'};
+var _user$project$Main$storyDecoder = A3(
+	_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+	'entries',
+	_elm_lang$core$Json_Decode$list(_user$project$Main$entryDecoder),
+	A3(
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$required,
+		'id',
+		_elm_lang$core$Json_Decode$int,
+		_NoRedInk$elm_decode_pipeline$Json_Decode_Pipeline$decode(_user$project$Main$Story)));
+var _user$project$Main$UpdateEntry = function (a) {
+	return {ctor: 'UpdateEntry', _0: a};
+};
+var _user$project$Main$AddEntry = {ctor: 'AddEntry'};
+var _user$project$Main$inputView = A2(
+	_elm_lang$html$Html$div,
+	{ctor: '[]'},
+	{
+		ctor: '::',
+		_0: A2(
+			_elm_lang$html$Html$input,
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$UpdateEntry),
+				_1: {ctor: '[]'}
+			},
+			{ctor: '[]'}),
+		_1: {
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$button,
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$AddEntry),
+					_1: {ctor: '[]'}
+				},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text('Add Entry'),
+					_1: {ctor: '[]'}
+				}),
+			_1: {ctor: '[]'}
+		}
+	});
+var _user$project$Main$FetchStories = function (a) {
+	return {ctor: 'FetchStories', _0: a};
+};
+var _user$project$Main$initCmd = A2(
+	_elm_lang$http$Http$send,
+	_user$project$Main$FetchStories,
+	A2(
+		_elm_lang$http$Http$get,
+		'http://localhost:3001/stories',
+		_elm_lang$core$Json_Decode$list(_user$project$Main$storyDecoder)));
+var _user$project$Main$init = {ctor: '_Tuple2', _0: _user$project$Main$initModel, _1: _user$project$Main$initCmd};
+var _user$project$Main$RandomStory = {ctor: 'RandomStory'};
+var _user$project$Main$view = function (model) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$button,
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$RandomStory),
+					_1: {ctor: '[]'}
+				},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text('Random Story!'),
+					_1: {ctor: '[]'}
+				}),
+			_1: {
+				ctor: '::',
+				_0: _user$project$Main$activeStoryView(model.activeStory),
+				_1: {
+					ctor: '::',
+					_0: _user$project$Main$inputView,
+					_1: {ctor: '[]'}
+				}
+			}
+		});
+};
+var _user$project$Main$LoadStory = function (a) {
+	return {ctor: 'LoadStory', _0: a};
+};
+var _user$project$Main$randomStory = function (stories) {
+	return A2(
+		_elm_lang$core$Random$generate,
+		_user$project$Main$LoadStory,
+		A2(
+			_elm_lang$core$Random$int,
+			0,
+			_elm_lang$core$List$length(stories) - 1));
+};
+var _user$project$Main$update = F2(
+	function (msg, model) {
+		var _p1 = msg;
+		switch (_p1.ctor) {
+			case 'LoadStory':
+				var story = A2(
+					_elm_lang$core$Array$get,
+					_p1._0,
+					_elm_lang$core$Array$fromList(model.stories));
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{activeStory: story}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			case 'RandomStory':
+				return {
+					ctor: '_Tuple2',
+					_0: model,
+					_1: _user$project$Main$randomStory(model.stories)
+				};
+			case 'FetchStories':
+				if (_p1._0.ctor === 'Ok') {
+					var _p2 = _p1._0._0;
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{stories: _p2}),
+						_1: _user$project$Main$randomStory(_p2)
+					};
+				} else {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				}
+			case 'UpdateEntry':
+				var curEntry = model.entry;
+				var entry = _elm_lang$core$Native_Utils.update(
+					curEntry,
+					{line: _p1._0});
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{entry: entry}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			default:
+				var entry = model.entry;
+				var story = A2(
+					_elm_lang$core$Maybe$map,
+					function (story) {
+						return A2(_user$project$Main$addEntry, story, entry);
+					},
+					model.activeStory);
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{activeStory: story}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+		}
+	});
+var _user$project$Main$main = _elm_lang$html$Html$program(
+	{
+		view: _user$project$Main$view,
+		init: _user$project$Main$init,
+		update: _user$project$Main$update,
+		subscriptions: _elm_lang$core$Basics$always(_elm_lang$core$Platform_Sub$none)
+	})();
 
+var _user$project$Tests$encodeEntry = function (_p0) {
+	var _p1 = _p0;
+	return _elm_lang$core$Json_Encode$object(
+		{
+			ctor: '::',
+			_0: {
+				ctor: '_Tuple2',
+				_0: 'line',
+				_1: _elm_lang$core$Json_Encode$string(_p1.line)
+			},
+			_1: {ctor: '[]'}
+		});
+};
+var _user$project$Tests$encodeEntries = function (entries) {
+	return _elm_lang$core$Json_Encode$list(
+		A2(_elm_lang$core$List$map, _user$project$Tests$encodeEntry, entries));
+};
+var _user$project$Tests$encodeStory = function (_p2) {
+	var _p3 = _p2;
+	return _elm_lang$core$Json_Encode$object(
+		{
+			ctor: '::',
+			_0: {
+				ctor: '_Tuple2',
+				_0: 'id',
+				_1: _elm_lang$core$Json_Encode$int(_p3.id)
+			},
+			_1: {
+				ctor: '::',
+				_0: {
+					ctor: '_Tuple2',
+					_0: 'entries',
+					_1: _user$project$Tests$encodeEntries(_p3.entries)
+				},
+				_1: {ctor: '[]'}
+			}
+		});
+};
 var _user$project$Tests$decoderTest = A2(
 	_elm_community$elm_test$Test$test,
 	'title defaults to (untitled)',
-	function (_p0) {
+	function (_p4) {
 		return A2(
 			_elm_community$elm_test$Expect$equal,
 			_elm_lang$core$Result$Ok('monkey'),
@@ -13719,9 +14410,12 @@ var _user$project$Tests$decoderTest = A2(
 				function (_) {
 					return _.word;
 				},
-				A2(_elm_lang$core$Json_Decode$decodeString, _user$project$Main$wordDecoder, '{\n  \"word\": \"monkey\",\n  \"results\": [\n    {\n      \"definition\": \"one who is playfully mischievous\",\n      \"partOfSpeech\": \"noun\",\n      \"synonyms\": [\n        \"imp\",\n        \"rapscallion\",\n        \"rascal\",\n        \"scalawag\",\n        \"scallywag\",\n        \"scamp\"\n      ],\n      \"typeOf\": [\n        \"nestling\",\n        \"nipper\",\n        \"kid\",\n        \"minor\",\n        \"small fry\",\n        \"tiddler\",\n        \"tike\",\n        \"tyke\",\n        \"youngster\",\n        \"fry\",\n        \"child\",\n        \"shaver\"\n      ],\n      \"hasTypes\": [\n        \"holy terror\",\n        \"terror\",\n        \"brat\",\n        \"little terror\"\n      ]\n    },\n    {\n      \"definition\": \"do random, unplanned work or activities or spend time idly\",\n      \"partOfSpeech\": \"verb\",\n      \"synonyms\": [\n        \"mess around\",\n        \"monkey around\",\n        \"muck about\",\n        \"muck around\",\n        \"potter\",\n        \"putter\",\n        \"tinker\"\n      ],\n      \"typeOf\": [\n        \"work\"\n      ],\n      \"hasTypes\": [\n        \"puddle\"\n      ]\n    },\n    {\n      \"definition\": \"play around with or alter or falsify, usually secretively or dishonestly\",\n      \"partOfSpeech\": \"verb\",\n      \"synonyms\": [\n        \"fiddle\",\n        \"tamper\"\n      ],\n      \"typeOf\": [\n        \"manipulate\"\n      ]\n    },\n    {\n      \"definition\": \"any of various long-tailed primates (excluding the prosimians)\",\n      \"partOfSpeech\": \"noun\",\n      \"typeOf\": [\n        \"primate\"\n      ],\n      \"hasTypes\": [\n        \"new world monkey\",\n        \"catarrhine\",\n        \"platyrrhinian\",\n        \"platyrrhine\",\n        \"old world monkey\"\n      ]\n    }\n  ],\n  \"syllables\": {\n    \"count\": 2,\n    \"list\": [\n      \"mon\",\n      \"key\"\n    ]\n  },\n  \"pronunciation\": {\n    \"all\": \"\'m??ki\"\n  },\n  \"frequency\": 4.51\n}')));
+				A2(_elm_lang$core$Json_Decode$decodeString, _user$project$Main$wordDecoder, '{\n  \"word\": \"monkey\",\n  \"results\": [\n    {\n      \"definition\": \"one who is playfully mischievous\",\n      \"partOfSpeech\": \"noun\",\n      \"synonyms\": [\n        \"imp\",\n        \"rapscallion\",\n        \"rascal\",\n        \"scalawag\",\n        \"scallywag\",\n        \"scamp\"\n      ],\n      \"typeOf\": [\n        \"nestling\",\n        \"nipper\",\n        \"kid\",\n        \"minor\",\n        \"small fry\",\n        \"tiddler\",\n        \"tike\",\n        \"tyke\",\n        \"youngster\",\n        \"fry\",\n        \"child\",\n        \"shaver\"\n      ],\n      \"hasTypes\": [\n        \"holy terror\",\n        \"terror\",\n        \"brat\",\n        \"little terror\"\n      ]\n    }]\n}')));
 	});
-var _user$project$Tests$entries = {ctor: '[]'};
+var _user$project$Tests$entries = A2(
+	_user$project$Main$Story,
+	0,
+	{ctor: '[]'});
 var _user$project$Tests$mkWord = function (s) {
 	return A2(
 		_user$project$Util$Word,
@@ -13748,6 +14442,76 @@ var _user$project$Tests$myEntry = A2(
 		_0: _user$project$Tests$word,
 		_1: {ctor: '[]'}
 	});
+var _user$project$Tests$encodeEntryTest = A2(
+	_elm_community$elm_test$Test$describe,
+	'encoding',
+	{
+		ctor: '::',
+		_0: A2(
+			_elm_community$elm_test$Test$test,
+			'turns entry into string',
+			function (_p5) {
+				return A2(
+					_elm_community$elm_test$Expect$equal,
+					'{\"line\":\"This is cool\"}',
+					A2(
+						_elm_lang$core$Json_Encode$encode,
+						0,
+						_user$project$Tests$encodeEntry(_user$project$Tests$myEntry)));
+			}),
+		_1: {
+			ctor: '::',
+			_0: A2(
+				_elm_community$elm_test$Test$test,
+				'turns entries into list string',
+				function (_p6) {
+					return A2(
+						_elm_community$elm_test$Expect$equal,
+						'[{\"line\":\"This is cool\"},{\"line\":\"This is cool\"}]',
+						A2(
+							_elm_lang$core$Json_Encode$encode,
+							0,
+							_user$project$Tests$encodeEntries(
+								{
+									ctor: '::',
+									_0: _user$project$Tests$myEntry,
+									_1: {
+										ctor: '::',
+										_0: _user$project$Tests$myEntry,
+										_1: {ctor: '[]'}
+									}
+								})));
+				}),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_community$elm_test$Test$test,
+					'encode story',
+					function (_p7) {
+						return A2(
+							_elm_community$elm_test$Expect$equal,
+							'{\"id\":\"0\",\"entries\":[{\"line\":\"This is cool\"},{\"line\":\"This is cool\"}]}',
+							A2(
+								_elm_lang$core$Json_Encode$encode,
+								0,
+								_user$project$Tests$encodeStory(
+									A2(
+										_user$project$Main$Story,
+										0,
+										{
+											ctor: '::',
+											_0: _user$project$Tests$myEntry,
+											_1: {
+												ctor: '::',
+												_0: _user$project$Tests$myEntry,
+												_1: {ctor: '[]'}
+											}
+										}))));
+					}),
+				_1: {ctor: '[]'}
+			}
+		}
+	});
 var _user$project$Tests$all = A2(
 	_elm_community$elm_test$Test$describe,
 	'A Test Suite',
@@ -13756,7 +14520,7 @@ var _user$project$Tests$all = A2(
 		_0: A2(
 			_elm_community$elm_test$Test$test,
 			'has word',
-			function (_p1) {
+			function (_p8) {
 				return A2(
 					_elm_community$elm_test$Expect$equal,
 					'cool',
@@ -13769,7 +14533,7 @@ var _user$project$Tests$all = A2(
 			_0: A2(
 				_elm_community$elm_test$Test$test,
 				'contains word',
-				function (_p2) {
+				function (_p9) {
 					return A2(
 						_elm_community$elm_test$Expect$equal,
 						true,
@@ -13780,7 +14544,7 @@ var _user$project$Tests$all = A2(
 				_0: A2(
 					_elm_community$elm_test$Test$test,
 					'contains all words',
-					function (_p3) {
+					function (_p10) {
 						return A2(
 							_elm_community$elm_test$Expect$equal,
 							true,
@@ -13806,7 +14570,7 @@ var _user$project$Tests$all = A2(
 					_0: A2(
 						_elm_community$elm_test$Test$test,
 						'expects correct casing',
-						function (_p4) {
+						function (_p11) {
 							return A2(
 								_elm_community$elm_test$Expect$equal,
 								true,
@@ -13832,7 +14596,7 @@ var _user$project$Tests$all = A2(
 						_0: A2(
 							_elm_community$elm_test$Test$test,
 							'does not contain all words',
-							function (_p5) {
+							function (_p12) {
 								return A2(
 									_elm_community$elm_test$Expect$equal,
 									false,
@@ -13858,7 +14622,7 @@ var _user$project$Tests$all = A2(
 							_0: A2(
 								_elm_community$elm_test$Test$test,
 								'ignores period',
-								function (_p6) {
+								function (_p13) {
 									return A2(
 										_elm_community$elm_test$Expect$equal,
 										true,
@@ -13877,7 +14641,7 @@ var _user$project$Tests$all = A2(
 								_0: A2(
 									_elm_community$elm_test$Test$test,
 									'ignores semicolon',
-									function (_p7) {
+									function (_p14) {
 										return A2(
 											_elm_community$elm_test$Expect$equal,
 											true,
@@ -13896,7 +14660,7 @@ var _user$project$Tests$all = A2(
 									_0: A2(
 										_elm_community$elm_test$Test$test,
 										'ignores comma',
-										function (_p8) {
+										function (_p15) {
 											return A2(
 												_elm_community$elm_test$Expect$equal,
 												true,
@@ -13915,7 +14679,7 @@ var _user$project$Tests$all = A2(
 										_0: A2(
 											_elm_community$elm_test$Test$test,
 											'is not completed sentence',
-											function (_p9) {
+											function (_p16) {
 												return A2(
 													_elm_community$elm_test$Expect$equal,
 													false,
@@ -13941,7 +14705,7 @@ var _user$project$Tests$all = A2(
 											_0: A2(
 												_elm_community$elm_test$Test$test,
 												'converts period to space',
-												function (_p10) {
+												function (_p17) {
 													return A2(
 														_elm_community$elm_test$Expect$equal,
 														'cool ',
@@ -13952,7 +14716,7 @@ var _user$project$Tests$all = A2(
 												_0: A2(
 													_elm_community$elm_test$Test$test,
 													'converts comma to space',
-													function (_p11) {
+													function (_p18) {
 														return A2(
 															_elm_community$elm_test$Expect$equal,
 															'cool ',
@@ -13963,7 +14727,7 @@ var _user$project$Tests$all = A2(
 													_0: A2(
 														_elm_community$elm_test$Test$test,
 														'adds valid entry',
-														function (_p12) {
+														function (_p19) {
 															return A2(
 																_elm_community$elm_test$Expect$notEqual,
 																_user$project$Tests$entries,
@@ -13984,7 +14748,7 @@ var _user$project$Tests$all = A2(
 														_0: A2(
 															_elm_community$elm_test$Test$test,
 															'does not add invalid entry',
-															function (_p13) {
+															function (_p20) {
 																return A2(
 																	_elm_community$elm_test$Expect$equal,
 																	_user$project$Tests$entries,

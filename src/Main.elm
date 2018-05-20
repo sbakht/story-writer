@@ -8,8 +8,10 @@ import Array
 import Random
 import Json.Decode exposing (decodeString)
 import Json.Decode exposing (string, int, list, Decoder, at, index)
-import Json.Decode.Pipeline exposing (decode, required, optional)
+import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
 import Util exposing (Word, Definition, Entry, isCompletedDictionary, decodeDefinition)
+import Http
+import Json.Encode as Encode exposing (encode)
 
 
 ---- MODEL ----
@@ -20,24 +22,24 @@ type alias Model =
 
 
 type alias Story =
-    { entries : List Entry }
+    { id : Int, entries : List Entry }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( initModel, randomStory initModel.stories )
+    ( initModel, initCmd )
 
 
+initCmd : Cmd Msg
+initCmd =
+    list storyDecoder
+        |> Http.get "http://localhost:3001/stories"
+        |> Http.send FetchStories
+
+
+initModel : Model
 initModel =
-    Model initStories Nothing (Entry "" [])
-
-
-initStories : List Story
-initStories =
-    [ Story [ Entry "Entry #1" [] ]
-    , Story [ Entry "Entry #1" [], Entry "Entry #2" [] ]
-    , Story [ Entry "Entry #1" [], Entry "Entry #2" [], Entry "Entry #3" [] ]
-    ]
+    Model [] Nothing (Entry "" [])
 
 
 wordDecoder : Decoder Word
@@ -47,16 +49,64 @@ wordDecoder =
         |> required "results" (list decodeDefinition)
 
 
+storyDecoder : Decoder Story
+storyDecoder =
+    decode Story
+        |> required "id" int
+        |> required "entries" (list entryDecoder)
+
+
+entryDecoder : Decoder Entry
+entryDecoder =
+    decode Entry
+        |> required "line" string
+        |> hardcoded []
+
+
+encodeEntry : Entry -> Encode.Value
+encodeEntry { line, dictionary } =
+    Encode.object [ ( "line", Encode.string line ) ]
+
+
+encodeEntries : List Entry -> Encode.Value
+encodeEntries entries =
+    Encode.list (map encodeEntry entries)
+
+
+encodeStory : Story -> Encode.Value
+encodeStory { id, entries } =
+    Encode.object [ ( "id", Encode.int id ), ( "entries", encodeEntries entries ) ]
+
+
 addEntry : Story -> Entry -> Story
 addEntry story entry =
     if isCompletedDictionary entry then
-        Story <| story.entries ++ [ entry ]
+        { story | entries = story.entries ++ [ entry ] }
     else
         story
 
 
+randomStory : List Story -> Cmd Msg
 randomStory stories =
     Random.generate LoadStory (Random.int 0 (List.length stories - 1))
+
+
+postStoryRequest : Story -> Http.Request Story
+postStoryRequest story =
+    Http.request
+        { method = "PATCH"
+        , headers = []
+        , url = "http://localhost:3001/stories/" ++ (toString story.id)
+        , body = Http.jsonBody (encodeStory story)
+        , expect = Http.expectJson storyDecoder
+        , timeout = Nothing
+        , withCredentials = False
+        }
+
+
+getStoryRequest : Int -> Http.Request Story
+getStoryRequest index =
+    Http.get ("http://localhost:3001/stories/" ++ toString index) storyDecoder
 
 
 
@@ -66,7 +116,10 @@ randomStory stories =
 type Msg
     = LoadStory Int
     | RandomStory
-    | AddEntry
+    | GetStory (Result Http.Error Story)
+    | FetchStories (Result Http.Error (List Story))
+    | PostStory (Result Http.Error Story)
+    | AddEntry Story
     | UpdateEntry String
 
 
@@ -74,17 +127,28 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         LoadStory index ->
-            let
-                story : Maybe Story
-                story =
-                    model.stories
-                        |> Array.fromList
-                        |> Array.get index
-            in
-                ( { model | activeStory = story }, Cmd.none )
+            ( model, Http.send GetStory (getStoryRequest index) )
 
         RandomStory ->
             ( model, randomStory model.stories )
+
+        GetStory (Ok story) ->
+            ( { model | activeStory = Just story }, Cmd.none )
+
+        GetStory (Err _) ->
+            ( model, Cmd.none )
+
+        FetchStories (Ok stories) ->
+            ( { model | stories = stories }, randomStory stories )
+
+        FetchStories (Err x) ->
+            ( model, Cmd.none )
+
+        PostStory (Ok story) ->
+            ( model, Cmd.none )
+
+        PostStory (Err _) ->
+            ( model, Cmd.none )
 
         UpdateEntry text ->
             let
@@ -96,15 +160,15 @@ update msg model =
             in
                 ( { model | entry = entry }, Cmd.none )
 
-        AddEntry ->
+        AddEntry story ->
             let
                 entry =
                     model.entry
 
-                story =
-                    Maybe.map (\story -> addEntry story entry) model.activeStory
+                newStory =
+                    addEntry story entry
             in
-                ( { model | activeStory = story }, Cmd.none )
+                ( { model | activeStory = Just newStory }, Http.send PostStory (postStoryRequest newStory) )
 
 
 
@@ -116,7 +180,6 @@ view model =
     div []
         [ button [ onClick RandomStory ] [ text "Random Story!" ]
         , activeStoryView model.activeStory
-        , inputView
         ]
 
 
@@ -125,16 +188,25 @@ activeStoryView story =
     div [ class "story" ]
         (case story of
             Just story ->
-                map (\entry -> p [] [ text entry.line ]) story.entries
+                [ div []
+                    [ div [] (map entryView story.entries)
+                    , inputView story
+                    ]
+                ]
 
             Nothing ->
                 [ p [] [ text "No Stories Available" ] ]
         )
 
 
-inputView : Html Msg
-inputView =
-    div [] [ input [ onInput UpdateEntry ] [], button [ onClick AddEntry ] [ text "Add Entry" ] ]
+entryView : Entry -> Html Msg
+entryView entry =
+    p [] [ text entry.line ]
+
+
+inputView : Story -> Html Msg
+inputView story =
+    div [] [ input [ onInput UpdateEntry ] [], button [ onClick (AddEntry story) ] [ text "Add Entry" ] ]
 
 
 

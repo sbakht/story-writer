@@ -4,9 +4,10 @@ import Test exposing (..)
 import List exposing (map, foldl)
 import String exposing (cons, toLower)
 import Expect
-import Main exposing (addEntry, wordDecoder)
+import Main exposing (addEntry, wordDecoder, Story)
 import Util exposing (..)
 import Json.Decode exposing (decodeString)
+import Json.Encode as Encode exposing (encode)
 
 
 -- Check out http://package.elm-lang.org/packages/elm-community/elm-test/latest to learn more about testing in Elm!
@@ -27,9 +28,9 @@ myEntry =
     Entry "This is cool" [ word ]
 
 
-entries : List Entry
+entries : Story
 entries =
-    []
+    Story 0 []
 
 
 all : Test
@@ -115,64 +116,47 @@ decoderTest =
         "brat",
         "little terror"
       ]
-    },
-    {
-      "definition": "do random, unplanned work or activities or spend time idly",
-      "partOfSpeech": "verb",
-      "synonyms": [
-        "mess around",
-        "monkey around",
-        "muck about",
-        "muck around",
-        "potter",
-        "putter",
-        "tinker"
-      ],
-      "typeOf": [
-        "work"
-      ],
-      "hasTypes": [
-        "puddle"
-      ]
-    },
-    {
-      "definition": "play around with or alter or falsify, usually secretively or dishonestly",
-      "partOfSpeech": "verb",
-      "synonyms": [
-        "fiddle",
-        "tamper"
-      ],
-      "typeOf": [
-        "manipulate"
-      ]
-    },
-    {
-      "definition": "any of various long-tailed primates (excluding the prosimians)",
-      "partOfSpeech": "noun",
-      "typeOf": [
-        "primate"
-      ],
-      "hasTypes": [
-        "new world monkey",
-        "catarrhine",
-        "platyrrhinian",
-        "platyrrhine",
-        "old world monkey"
-      ]
-    }
-  ],
-  "syllables": {
-    "count": 2,
-    "list": [
-      "mon",
-      "key"
-    ]
-  },
-  "pronunciation": {
-    "all": "'m??ki"
-  },
-  "frequency": 4.51
+    }]
 }"""
                 |> decodeString wordDecoder
                 |> Result.map .word
                 |> Expect.equal (Ok "monkey")
+
+
+encodeEntry : Entry -> Encode.Value
+encodeEntry { line, dictionary } =
+    Encode.object [ ( "line", Encode.string line ) ]
+
+
+encodeEntries : List Entry -> Encode.Value
+encodeEntries entries =
+    Encode.list (map encodeEntry entries)
+
+
+encodeStory : Story -> Encode.Value
+encodeStory { id, entries } =
+    Encode.object [ ( "id", Encode.int id ), ( "entries", encodeEntries entries ) ]
+
+
+encodeEntryTest : Test
+encodeEntryTest =
+    describe "encoding"
+        [ test "turns entry into string" <|
+            \_ ->
+                myEntry
+                    |> encodeEntry
+                    |> encode 0
+                    |> Expect.equal ("""{"line":"This is cool"}""")
+        , test "turns entries into list string" <|
+            \_ ->
+                [ myEntry, myEntry ]
+                    |> encodeEntries
+                    |> encode 0
+                    |> Expect.equal ("""[{"line":"This is cool"},{"line":"This is cool"}]""")
+        , test "encode story" <|
+            \_ ->
+                Story 0 [ myEntry, myEntry ]
+                    |> encodeStory
+                    |> encode 0
+                    |> Expect.equal ("""{"id":0,"entries":[{"line":"This is cool"},{"line":"This is cool"}]}""")
+        ]
